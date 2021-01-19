@@ -44,7 +44,9 @@ component accessors=true singleton {
                     argumentCollection = requestObj
                 );
 
-                var replyTo = settings.replyToUDF( message, log );
+
+                var requestContext  = RequestBridge.getRequestContext();
+                var replyTo = settings.replyToUDF( requestContext, requestContext.getCollection(), requestContext.getPrivateCollection(), message, log );
                 if( !len( replyTo ) ) {
                     log.error( 'Reply to routing key cannot be found. Please check your replyToUDF setting' );
                     return;

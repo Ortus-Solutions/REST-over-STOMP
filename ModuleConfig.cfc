@@ -11,7 +11,7 @@ component {
 			'autoDeclareIncomingQueue' : true,
 			'consumerThreads' : 30,
 			'debugMessages' : false,
-			'replyToUDF' : ( message, log )=>message.getHeader( 'reply_to', '' ),
+			'replyToUDF' : ( requestContext, requestContext.getCollection(), requestContext.getPrivateCollection(), message, log )=>message.getHeader( 'reply_to', '' ),
 			'securityUDF' : ( event, rc, prc, log )=>true,
 			//{
 				//event.overrideEvent( 'main.stompTest' );
