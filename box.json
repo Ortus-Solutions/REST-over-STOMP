@@ -1,0 +1,18 @@
+{
+    "author":"Brad Wood",
+    "dependencies":{
+        "rabbitsdk":"stable"
+    },
+    "ignore":[
+        "**/.*",
+        "/test/",
+        "/tests/"
+    ],
+    "location":"ForgeboxStorage",
+    "name":"REST over STOMP",
+    "scripts":{},
+    "shortDescription":"A module to expose your REST API over STOMP websockets using RabbitMQ",
+    "slug":"rest-over-stomp",
+    "type":"modules",
+    "version":"1.0.0"
+}
