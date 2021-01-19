@@ -1,5 +1,5 @@
 {
-	"homepage":"https://github.com/Ortus-Solutions/REST-over-STOMP",
+    "homepage":"https://github.com/Ortus-Solutions/REST-over-STOMP",
     "projectURL":"https://github.com/Ortus-Solutions/REST-over-STOMP",
     "author":"Brad Wood",
     "dependencies":{
@@ -13,11 +13,11 @@
     "location":"ForgeboxStorage",
     "name":"REST over STOMP",
     "scripts":{
-    	"onRelease":"publish",
-    	"postPublish":"!git push --follow-tags"
+        "onRelease":"publish",
+        "postPublish":"!git push --follow-tags"
     },
     "shortDescription":"A module to expose your REST API over STOMP websockets using RabbitMQ",
     "slug":"rest-over-stomp",
     "type":"modules",
-    "version":"1.0.0"
+    "version":"1.0.1"
 }
