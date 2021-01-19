@@ -5,6 +5,10 @@
     "dependencies":{
         "rabbitsdk":"stable"
     },
+    "repository":{
+        "type":"git",
+        "url":"https://github.com/Ortus-Solutions/REST-over-STOMP"
+    },
     "ignore":[
         "**/.*",
         "/test/",
