@@ -52,6 +52,10 @@ component accessors=true singleton {
                     return;
                 }
 
+                if( settings.debugMessages ) {
+                    log.info( 'Sending reply to [#replyTo#]', responseObj );
+                }
+
                 channel.publish(
                     exchange='amq.topic',
                     routingKey=replyTo,
