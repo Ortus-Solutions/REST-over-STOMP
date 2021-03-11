@@ -229,7 +229,7 @@ component accessors=true  {
         string queryString,
         string domain
     ){
-		var source = "#method# #domain##settings.sourcePrefix##domain##route#";
+		var source = "#method# #settings.sourcePrefix##domain##route#";
         if( len( event ) ){
             source &= "?event=#event#";
         }
