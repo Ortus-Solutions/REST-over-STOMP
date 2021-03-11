@@ -23,5 +23,5 @@
     "shortDescription":"A module to expose your REST API over STOMP websockets using RabbitMQ",
     "slug":"rest-over-stomp",
     "type":"modules",
-    "version":"1.0.3"
+    "version":"1.0.4"
 }
