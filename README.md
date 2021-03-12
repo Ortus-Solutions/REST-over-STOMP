@@ -29,7 +29,7 @@ Note the Stomp.js library above is a Node lib but can also be used directly in y
 This module includes as a dependency:
 * RabbitSDK for CFML - https://github.com/Ortus-Solutions/RabbitSDK/blob/master/README.md
 
-This module runs your Coldbox events inside of a "vacuum" which will not have any normal session scope.  This is fine for a stateless API or a simple app, but will not work great if you have an application which is very tightly coupled to a session scope.  The incoming requests will not have any cookies that you don't explicitly send and therefore can only authenticate the browser making the request if you send something along with the request to identity the user.  Make sure you use a JWT or other secure token and don't just blindly trust what the browser sends you. 
+This module runs your Coldbox events inside of a "vacuum" which will not have any normal session scope.  This is fine for a stateless API or a simple app, but will not work great if you have an application which is very tightly coupled to a session scope.  You may need to refactor parts of your app or API to wrap an abstraction around these aspects.  The incoming requests will also not have any cookies that you don't explicitly send and therefore can only authenticate the browser making the request if you send something along with the request to identity the user.  Make sure you use a JWT or other secure token and don't just blindly trust what the browser sends you. 
 
 ## Installation
 
@@ -165,3 +165,91 @@ The UDF can have the following behaviors:
 Since responses arrive back at the browser in an aynsc fasion-- or in some cases a REST over STOMP delivery may arrive at the browser unexpectedly from a back-end process, it is neccessary for the browser to be able to identify what it has just received.  The `source` key in the response (covered below) will include this prefix if you set it to identify what app the data came from.  It is possible to have `REST-over-STOMP` installed in more than on ColdBox app, each capable of sending the results of their events to any given browser.
 
 The default value is an empty string ( `""` )
+
+## Usage
+
+You can create a simple Stomp.js subscription like so.  This handles the connection to Rabbit and sets up some simple code to respond when a STOMP websocket message comes in.
+
+```js
+
+const stompConfig = {
+  connectHeaders: {
+    login: "guest",
+    passcode: "guest"
+  },
+
+  brokerURL: "ws://localhost:15674/ws",
+  
+  // Keep it off for production, it can be quite verbose
+  debug: function (str) {
+    console.log('STOMP: ' + str);
+  },
+
+  // If disconnected, it will retry after 200ms
+  reconnectDelay: 200,
+
+  // Subscriptions should be done inside onConnect as those need to reinstated when the broker reconnects
+  onConnect: function (frame) {
+    // Make this topic dynamic so each user gets their own
+    const subscription = stompClient.subscribe('/topic/api-responses.Brad-Wood', function (message) {
+      const payload = JSON.parse(message.body);
+      var data = payload.body;
+      if( payload.headers && 'Content-Type' in payload.headers && payload.headers['Content-Type'].toUpperCase().includes( 'JSON' ) ) {
+        data = JSON.parse( payload.body );
+      }
+      console.log( data )
+    });
+  }
+
+};
+
+stompClient = new StompJs.Client(stompConfig);
+stompClient.activate();
+```
+Now, you can request the results of a ColdBox event in your browser via JS like so:
+```js
+var data = {
+      destination: '/queue/API-Requests',
+      body: JSON.stringify({
+          "route": "/api/v1/echo",
+          "headers": {
+              "JWT": JWTValue
+          },
+          "method": "GET"
+      }),
+      headers:{
+          "_autoJSON":true,
+          "reply_to":"api-responses.Brad-Wood"
+      }
+};
+stompClient.publish( data );
+```
+Note the response comes back asyncronously.  The callback that processes a reponse is in the code block above.  It's up to your code to introspect the incoming payload, decide what it is, where it came from, and what to do with it.
+
+You can request a payload be sent from a server-side process using the CFML RabbitSDK.  (Or for that matter, any valid programming language can send a message to Rabbit to kick off this process)
+
+```js
+rabbitClient
+	.publish(
+		body = {
+            "route": "/api/v1/echo",
+            "headers": {
+                "X-Api-Key":"..."
+            },
+            "method": "GET"
+        },
+		routingKey='API-Requests',
+		props={
+			'headers' : {
+				'reply_to' : 'api-responses.Brad-Wood'
+			}
+		}
+	);
+```
+
+This is all pretty rough and there are many ways to accompish it.  Just ensure you think through:
+* Authenticating browsers to Rabbit (this is where the HTTP backend auth comes in)  DON'T HARDCODE A USER/PASS IN YOUR APP'S JS FILES!
+* Authenticating requests to your ColdBox app.  This is a separate concern from the bullet above.  The user/JWT in your browser only provides the rights for the client to send the message to the Rabbit queue.  When the message arrives at the Rabbit consumer, you need to decide if that incoming request can be served by your Coldbox app.  
+* Consider what you will use for your topic names, and ensure your HTTP backend auth implementation in the fist bullet only allows a user to subscribe to their OWN TOPIC.  
+
+It's fairly easy to get a proof of concept of all this going, but it's a lot more work to ensure you've locked everything down from a security standpoint.  Remember any browser on the internet can try and connect to your Rabbit STOMP server.  
