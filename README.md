@@ -67,7 +67,7 @@ moduleSettings = {
     'consumerThreads' : 30,
     'debugMessages' : true,
     'replyToUDF' : ( event, rc, prc, message, log )=>message.getHeader( 'reply_to', '' ),
-    'securityUDF' : ( event, rc, prc, log )=>true,
+    'securityUDF' : ( event, rc, prc, message, log )=>true,
     'sourcePrefix' : 'myApp-prefix'
   }
 }
@@ -138,11 +138,12 @@ When the REST over STOMP Rabbit consumer thread runs an incoming request, it wil
 
 This means that if your app or API is secured by an interceptor, it will fire as usual.  However, if you want to provide an additional security check, the `securtyUDF` will be executed inside the Rabbit consumer thread prior to each request and before ANY of the interceptors or request lifecyle handler events fire.  The signature (and default implementation) of the UDF is:
 ```js
-'securityUDF' : ( event, rc, prc, log )=>true,
+'securityUDF' : ( event, rc, prc, message, log )=>true,
 ```
 * `event` - The RequestContext object from the ColdBox request
 * `rc` - The Request Collection from the ColdBox request
 * `prc` - The Private Request Collection from the ColdBox request
+* `message` - The RabbitSDK message object.  https://github.com/Ortus-Solutions/RabbitSDK#message
 * `log` - The logbox logger from the REST over STOMP module
 
 The UDF can have the following behaviors:
