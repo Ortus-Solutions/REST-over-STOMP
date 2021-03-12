@@ -283,7 +283,7 @@ Whether you request a REST over STOMP response from a browser or the RabbitSDK d
 ```
 All of the properties above are optional.  If you were to send nothing, you could get back the result of a GET to the default event in the ColdBox app, whcih would be the equivalent of just htiting the site's default page in your browser.  Also remember, your ColdBox app should not directly touch the real `URL`, `form`, `cgi` scopes nor `getHTTPRequestData()` in CFML or it will not be able to see this data.  Instead, ensure your app uses the RequestContext (the `event` object) helpers, and the `rc` struct for all data.  This allows the REST over STOMP module to spoof all of these data so your app won't be able to tell the difference between a normal HTTP request and processing a REST over STOMP request inside of a Rabbit consumer thread.
 
-### Request structure
+### Response structure
 
 The STOMP websocket message when it arrives at your browser will have the following body.  The actual STOMP body will be a string so you will need to deserialize it in your JS code.
 ```js
