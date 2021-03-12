@@ -68,7 +68,7 @@ moduleSettings = {
     'debugMessages' : true,
     'replyToUDF' : ( event, rc, prc, message, log )=>message.getHeader( 'reply_to', '' ),
     'securityUDF' : ( event, rc, prc, log )=>true,
-    'sourcePrefix' : 'myApp'
+    'sourcePrefix' : 'myApp-prefix'
   }
 }
 ```
@@ -192,6 +192,9 @@ const stompConfig = {
   onConnect: function (frame) {
     // Make this topic dynamic so each user gets their own
     const subscription = stompClient.subscribe('/topic/api-responses.Brad-Wood', function (message) {
+      // This will only exist if you pass it with the request
+      console.log( message.headers.correlationId  )
+
       const payload = JSON.parse(message.body);
       var data = payload.body;
       if( payload.headers && 'Content-Type' in payload.headers && payload.headers['Content-Type'].toUpperCase().includes( 'JSON' ) ) {
@@ -209,18 +212,20 @@ stompClient.activate();
 Now, you can request the results of a ColdBox event in your browser via JS like so:
 ```js
 var data = {
-      destination: '/queue/API-Requests',
-      body: JSON.stringify({
-          "route": "/api/v1/echo",
-          "headers": {
-              "JWT": JWTValue
-          },
-          "method": "GET"
-      }),
-      headers:{
-          "_autoJSON":true,
-          "reply_to":"api-responses.Brad-Wood"
-      }
+  destination: '/queue/API-Requests',
+    body: JSON.stringify({
+      "route": "/api/v1/echo",
+      "headers": {
+        "JWT": JWTValue
+      },
+      "method": "GET"
+    }),
+    headers:{
+      // The RabbitSDK uses this to know to desearlialize the STOMP body
+      "_autoJSON":true,
+      "reply_to":"api-responses.Brad-Wood",
+      "correlationId":123456
+    }
 };
 stompClient.publish( data );
 ```
@@ -230,21 +235,22 @@ You can request a payload be sent from a server-side process using the CFML Rabb
 
 ```js
 rabbitClient
-	.publish(
-		body = {
-            "route": "/api/v1/echo",
-            "headers": {
-                "X-Api-Key":"..."
-            },
-            "method": "GET"
-        },
-		routingKey='API-Requests',
-		props={
-			'headers' : {
-				'reply_to' : 'api-responses.Brad-Wood'
-			}
-		}
-	);
+  .publish(
+    body = {
+      "route": "/api/v1/echo",
+      "headers": {
+        "X-Api-Key":"..."
+      },
+      "method": "GET"
+    },
+    routingKey='API-Requests',
+    props={
+      "headers" : {
+        "reply_to" : "api-responses.Brad-Wood",
+        "correlationId":123456
+      }
+    }
+  );
 ```
 
 This is all pretty rough and there are many ways to accompish it.  Just ensure you think through:
@@ -253,3 +259,62 @@ This is all pretty rough and there are many ways to accompish it.  Just ensure y
 * Consider what you will use for your topic names, and ensure your HTTP backend auth implementation in the fist bullet only allows a user to subscribe to their OWN TOPIC.  
 
 It's fairly easy to get a proof of concept of all this going, but it's a lot more work to ensure you've locked everything down from a security standpoint.  Remember any browser on the internet can try and connect to your Rabbit STOMP server.  
+
+### Request structure
+
+Whether you request a REST over STOMP response from a browser or the RabbitSDK directly, the body of the message follows the same format.  It roughly mimics all the data that is part of a standard HTTP request, even though your REST over STOMP request will NOT be send via HTTP, but embedded in a STOMP websocket message instead.
+```js
+{
+  // Struct of HTTP headers.  These are different from the RabbitMQ message headers!
+  headers : {},
+  // Struct of form/url values. These will appear in the "rc" struct in ColdBox
+  params : {},
+  // The SES route such as /main/index or /api/user  This is mutually exclusive with event
+  route : '',
+  // The name of the ColdBox event such as main.index or api:user.index  This is mutually exclusive with route
+  event : '',
+  // HTTP verb for the request.  This affect's ColdBox's routing and is avilable via event.getHTTPMethod()  Defaults to GET
+  method : 'GET',
+  // Query string for the request.  Any values passed here will be appended to the "params" struct above
+  queryString : '',
+  // Used for domain-based routing in the ColdBox router
+  domain : ''
+}
+```
+All of the properties above are optional.  If you were to send nothing, you could get back the result of a GET to the default event in the ColdBox app, whcih would be the equivalent of just htiting the site's default page in your browser.  Also remember, your ColdBox app should not directly touch the real `URL`, `form`, `cgi` scopes nor `getHTTPRequestData()` in CFML or it will not be able to see this data.  Instead, ensure your app uses the RequestContext (the `event` object) helpers, and the `rc` struct for all data.  This allows the REST over STOMP module to spoof all of these data so your app won't be able to tell the difference between a normal HTTP request and processing a REST over STOMP request inside of a Rabbit consumer thread.
+
+### Request structure
+
+The STOMP websocket message when it arrives at your browser will have the following body.  The actual STOMP body will be a string so you will need to deserialize it in your JS code.
+```js
+{
+     'body' : '{ "data" : "Welcome to ColdBox REST" }',
+     'statusCode' : 200,
+     'headers' : {
+       "Content-Type": "application/JSON"
+     },
+     'source': 'GET myApp-prefix/api/v1/echo'
+};
+```
+It's important to remmeber that the response won't neccessariy be JSON.  It could be HTML or plain text.  It's up to you to look at the HTTP headers in the response to decide what it is.  In the example above, the content is JSON, so you could then need to deserialize the body of the response.   Any HTTP headers you set in your ColdBox request will appear in the `headers` struct SO LONG AS you use
+```js
+event.setHTTPHeader( "name", "value" )
+```
+Remember to always use the ColdBox helpers and never touch CF's plumbing directly.
+
+#### `Source`
+
+The `source` is so you can identify a response when it reaches your browser.  It tells you what remove server it came from and what Coldbox event or route it is the result of.  Since REST over STOMP messages can be triggered asyncronously or requested from an external process, the browser needs to be able to identify what it's getting.
+
+The recipe for the `source` is like this
+```
+<method> <sourcePrefix><domain>[<route>][?event=<event>][?<queryString>]
+```
+So, for example, if the `sourcePrefix` for our app (configured in `config/Coldbox.cfc`) is `myApp-prefix` and if you ask for a `GET` to the `/api/v1/echo` route with no query string, then the source would be:
+```
+GET myApp-prefix/api/v1/echo
+```
+
+#### `correlationId`
+
+IF you send more than one request to the same endpoint, you can add a correlationId to the request message as a STOMP websocket header (not the same as an HTTP request header).  When the REST over STOMP module ships back the reponse, it will add the `correlationId` as a STOMP header (again, not the same as an HTTP response header) and you can access it in your JS in the headers of the message object. The examples above show how this works.  `correlationId` is optional. 
