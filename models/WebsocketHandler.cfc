@@ -39,6 +39,8 @@ component accessors=true singleton {
                     domain : ''
                 }, false );
                 
+                requestObj.rabbitMessage = message;
+                
                 // RequestBridge is a transient.  One for each request.
                 var responseObj = RequestBridge.processRequest(
                     argumentCollection = requestObj

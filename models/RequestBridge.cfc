@@ -12,7 +12,8 @@ component accessors=true  {
 		struct headers      = {},
 		string method       = "GET",
         string queryString  = "",
-        string domain       = ""
+        string domain       = "",
+        any rabbitMessage
      ) {
         
 
@@ -103,7 +104,7 @@ component accessors=true  {
 				controller.getRequestService().requestCapture( thisEvent );
 			}
 
-            if( settings.securityUDF( requestContext, requestContext.getCollection(), requestContext.getPrivateCollection(), log ) ?: true ) {
+            if( settings.securityUDF( requestContext, requestContext.getCollection(), requestContext.getPrivateCollection(), rabbitMessage, log ) ?: true ) {
 
                 // preProcess
                 cbController.getInterceptorService().announce( "preProcess" );

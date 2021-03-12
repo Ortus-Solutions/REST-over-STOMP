@@ -318,3 +318,7 @@ GET myApp-prefix/api/v1/echo
 #### `correlationId`
 
 IF you send more than one request to the same endpoint, you can add a correlationId to the request message as a STOMP websocket header (not the same as an HTTP request header).  When the REST over STOMP module ships back the reponse, it will add the `correlationId` as a STOMP header (again, not the same as an HTTP response header) and you can access it in your JS in the headers of the message object. The examples above show how this works.  `correlationId` is optional. 
+
+## FusionReactor Integration
+
+If you have FusionReactor installed on your server, the REST over STOMP module will automatically log custom transactions for each request that comes in.  They will not show up under the "web requets" page in FR but can be seen under the "transactions" menu.  You can see how long each event takes to run as well as any JDBC calls or HTTP calls made during the request.  You can see the details of each requets in the "properties" tab of the transaction.  And if there is an error during the REST over STOMP request, it will appear in FusionReator under the "Error" tab for that transaction.  
