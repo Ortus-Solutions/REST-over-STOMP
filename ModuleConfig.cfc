@@ -19,9 +19,9 @@ component {
 	}
 
 	/**
-	 * Fired when the module is registered and activated.
+	 * Don't start listneing for messages until the framework and all modules are fully loaded
 	 */
-	function onLoad() {
+	function afterAspectsLoad() {
 		wirebox.getInstance( 'WebsocketHandler@REST-over-STOMP' ).startRabbitConsumer();
 	}
 
